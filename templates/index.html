@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-6">
+            <h3>Latest Transcription from Meetstream</h3>
+            <div id="latest-transcription" class="transcription-box">
+                {% if latest_transcription %}
+                    <p><strong>Latest:</strong> {{ latest_transcription }}</p>
+                {% else %}
+                    <p class="text-muted">No transcription received yet...</p>
+                {% endif %}
+            </div>
+            
+            <button id="use-latest-btn" class="btn btn-primary" onclick="useLatestTranscription()" {% if not latest_transcription %}disabled{% endif %}>
+                Use Latest Transcription
+            </button>
+            
+            <h4>Transcription History</h4>
+            <div id="transcription-history" class="history-box">
+                {% if transcription_history %}
+                    {% for item in transcription_history %}
+                        <div class="history-item">
+                            <small class="text-muted">{{ item.timestamp }}</small>
+                            <p>{{ item.text }}</p>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">No transcription history available</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <h3>Manual Entry</h3>
+            <form method="POST" action="/generate_cart">
+                <div class="form-group">
+                    <label>Transcript from Meetstream:</label>
+                    <textarea name="transcript" id="transcript-textarea" class="form-control" rows="5" placeholder="Paste the transcript here..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Your Pincode:</label>
+                    <input type="text" name="pincode" class="form-control" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">View Cart</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Function to update transcription display
+function updateTranscription() {
+    fetch('/get_latest_transcription')
+        .then(response => response.json())
+        .then(data => {
+            const latestDiv = document.getElementById('latest-transcription');
+            const historyDiv = document.getElementById('transcription-history');
+            const useLatestBtn = document.getElementById('use-latest-btn');
+            
+            // Update latest transcription
+            if (data.transcription) {
+                latestDiv.innerHTML = `<p><strong>Latest:</strong> ${data.transcription}</p>`;
+                latestDiv.classList.add('updated');
+                setTimeout(() => latestDiv.classList.remove('updated'), 1000);
+                
+                // Enable the use latest button
+                useLatestBtn.disabled = false;
+            }
+            
+            // Update history
+            if (data.history && data.history.length > 0) {
+                let historyHTML = '';
+                data.history.forEach(item => {
+                    historyHTML += `
+                        <div class="history-item">
+                            <small class="text-muted">${item.timestamp}</small>
+                            <p>${item.text}</p>
+                        </div>
+                    `;
+                });
+                historyDiv.innerHTML = historyHTML;
+            }
+        })
+        .catch(error => console.error('Error fetching transcription:', error));
+}
+
+// Function to use the latest transcription in the form
+function useLatestTranscription() {
+    fetch('/get_latest_transcription')
+        .then(response => response.json())
+        .then(data => {
+            if (data.transcription) {
+                document.getElementById('transcript-textarea').value = data.transcription;
+                // Scroll to the form
+                document.querySelector('.col-md-6:last-child').scrollIntoView({ 
+                    behavior: 'smooth' 
+                });
+            }
+        })
+        .catch(error => console.error('Error fetching latest transcription:', error));
+}
+
+// Update transcription every 2 seconds
+setInterval(updateTranscription, 2000);
+
+// Also update when page loads
+document.addEventListener('DOMContentLoaded', updateTranscription);
+</script>
+{% endblock %}

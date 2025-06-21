@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<form method="POST" action="/generate_cart">
+    <label>Transcript from Meetstream:</label><br>
+    <textarea name="transcript" rows="5" cols="60" placeholder="Paste the transcript here..."></textarea><br><br>
+
+    <label>Your Pincode:</label><br>
+    <input type="text" name="pincode" required><br><br>
+
+    <button type="submit">View Cart</button>
+</form>
+{% endblock %}

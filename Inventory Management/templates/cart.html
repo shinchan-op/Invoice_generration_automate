@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Auto-Generated Cart</h2>
+
+<!-- Add new item form -->
+<div class="add-item-container">
+    <h3>Add New Item</h3>
+    <form id="add-item-form" class="add-item-form">
+        <div class="form-group">
+            <label for="product">Product:</label>
+            <select id="product" name="product" required>
+                <option value="TMT rods">TMT rods</option>
+                <option value="steel coils">Steel Coils</option>
+                <option value="steel beams">Steel Beams</option>
+                <option value="steel plates">Steel Plates</option>
+                <option value="steel pipes">Steel Pipes</option>
+                <option value="steel angles">Steel Angles</option>
+                <option value="steel channels">Steel Channels</option>
+                <option value="steel wires">Steel Wires</option>
+                <option value="steel mesh">Steel Mesh</option>
+                <option value="stainless steel sheets">Stainless Steel Sheets</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="specs">Specifications:</label>
+            <input type="text" id="specs" name="specs" placeholder="e.g. 12mm, 3-ton" required>
+        </div>
+        <div class="form-group">
+            <label for="quantity">Quantity:</label>
+            <input type="number" id="quantity" name="quantity" min="1" value="1" required>
+        </div>
+        <button type="submit" class="add-btn">Add Item</button>
+    </form>
+</div>
+
+<!-- Cart table -->
+<table class="cart-table">
+    <thead>
+        <tr>
+            <th>Product</th>
+            <th>Specs</th>
+            <th>Quantity</th>
+            <th>Stock</th>
+            <th>Price/unit</th>
+            <th>Delivery (days)</th>
+            <th>Subtotal</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody id="cart-items">
+        {% for item in cart_items %}
+        <tr class="cart-item" data-price="{{ item.price_per_unit }}">
+            <td>{{ item.product }}</td>
+            <td>{{ item.specs }}</td>
+            <td>
+                <div class="quantity-control">
+                    <button class="quantity-btn decrease">-</button>
+                    <span class="quantity-value">{{ item.quantity }}</span>
+                    <button class="quantity-btn increase">+</button>
+                </div>
+            </td>
+            <td>{{ item.stock }}</td>
+            <td>₹{{ item.price_per_unit }}</td>
+            <td>{{ item.estimated_delivery_days }}</td>
+            <td class="subtotal">₹{{ item.subtotal }}</td>
+            <td>
+                <button class="remove-btn">Remove</button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Invoice Button -->
+<div class="invoice-container">
+    <button id="generate-invoice-btn" class="invoice-btn">Generate Invoice PDF</button>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Quantity change
+        document.querySelectorAll('.quantity-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const row = this.closest('tr');
+                const quantitySpan = row.querySelector('.quantity-value');
+                let quantity = parseInt(quantitySpan.textContent);
+                
+                if (this.classList.contains('increase')) {
+                    quantity++;
+                } else if (this.classList.contains('decrease') && quantity > 1) {
+                    quantity--;
+                }
+                
+                quantitySpan.textContent = quantity;
+                updateSubtotal(row, quantity);
+            });
+        });
+
+        // Remove item
+        document.querySelectorAll('.remove-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const row = this.closest('tr');
+                row.remove(); // or animate with fade if needed
+            });
+        });
+
+        // Add item
+        document.getElementById('add-item-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const product = document.getElementById('product').value;
+            const specs = document.getElementById('specs').value;
+            const quantity = parseInt(document.getElementById('quantity').value);
+
+            const newRow = document.createElement('tr');
+            newRow.classList.add('cart-item');
+            newRow.setAttribute('data-price', '0');
+
+            newRow.innerHTML = `
+                <td>${product}</td>
+                <td>${specs}</td>
+                <td>
+                    <div class="quantity-control">
+                        <button class="quantity-btn decrease">-</button>
+                        <span class="quantity-value">${quantity}</span>
+                        <button class="quantity-btn increase">+</button>
+                    </div>
+                </td>
+                <td>--</td>
+                <td>--</td>
+                <td>--</td>
+                <td class="subtotal">--</td>
+                <td><button class="remove-btn">Remove</button></td>
+            `;
+            document.getElementById('cart-items').appendChild(newRow);
+
+            // Add listeners to new buttons
+            newRow.querySelectorAll('.quantity-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const row = this.closest('tr');
+                    const quantitySpan = row.querySelector('.quantity-value');
+                    let quantity = parseInt(quantitySpan.textContent);
+                    if (this.classList.contains('increase')) quantity++;
+                    else if (quantity > 1) quantity--;
+                    quantitySpan.textContent = quantity;
+                });
+            });
+
+            newRow.querySelector('.remove-btn').addEventListener('click', function() {
+                this.closest('tr').remove();
+            });
+
+            // Reset form
+            this.reset();
+            document.getElementById('quantity').value = 1;
+        });
+
+        // Generate Invoice
+        document.getElementById('generate-invoice-btn').addEventListener('click', function() {
+            const button = this;
+            const cartItems = [];
+            const rows = document.querySelectorAll('#cart-items tr');
+            
+            if (rows.length === 0) {
+                alert('Cart is empty! Please add items before generating invoice.');
+                return;
+            }
+
+            // Add loading state
+            button.classList.add('loading');
+            button.disabled = true;
+
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 7) {
+                    const product = cells[0].textContent.trim();
+                    const specs = cells[1].textContent.trim();
+                    const quantity = parseInt(cells[2].querySelector('.quantity-value').textContent);
+                    const stock = cells[3].textContent.trim();
+                    const pricePerUnit = cells[4].textContent.replace('₹', '').trim();
+                    const deliveryDays = cells[5].textContent.trim();
+                    const subtotal = cells[6].textContent.trim();
+
+                    cartItems.push({
+                        product: product,
+                        specs: specs,
+                        quantity: quantity,
+                        stock: stock,
+                        price_per_unit: pricePerUnit,
+                        estimated_delivery_days: deliveryDays,
+                        subtotal: subtotal
+                    });
+                }
+            });
+
+            // Get pincode from URL parameters or use default
+            const urlParams = new URLSearchParams(window.location.search);
+            const pincode = urlParams.get('pincode') || 'N/A';
+
+            const cartData = {
+                items: cartItems,
+                pincode: pincode
+            };
+
+            // Send request to generate PDF
+            fetch('/generate_invoice', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(cartData)
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.blob();
+                } else {
+                    throw new Error('Failed to generate invoice');
+                }
+            })
+            .then(blob => {
+                // Create download link
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = `invoice_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                
+                // Show success message
+                alert('Invoice generated successfully!');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to generate invoice. Please try again.');
+            })
+            .finally(() => {
+                // Remove loading state
+                button.classList.remove('loading');
+                button.disabled = false;
+            });
+        });
+
+        function updateSubtotal(row, quantity) {
+            const price = parseFloat(row.getAttribute('data-price')) || 0;
+            if (price > 0) {
+                const subtotalCell = row.querySelector('.subtotal');
+                subtotalCell.textContent = '₹' + (price * quantity).toLocaleString();
+            }
+        }
+    });
+</script>
+{% endblock %}
