@@ -479,6 +479,11 @@ select:focus, input:focus {
   background: linear-gradient(90deg, var(--accent) 0%, var(--highlight) 100%);
 }
 
+.btn-secondary {
+  background: linear-gradient(90deg, var(--secondary) 0%, var(--accent) 100%);
+  margin-left: 10px;
+}
+
 .btn:hover {
   transform: translateY(-3px);
   box-shadow: var(--glow);

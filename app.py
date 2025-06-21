@@ -55,9 +55,16 @@ def receive_transcription():
 
 @app.route('/get_latest_transcription', methods=['GET'])
 def get_latest_transcription():
-    """API endpoint to get the latest transcription"""
+    """API endpoint to get the latest transcription and full transcription history"""
+    # Concatenate all transcriptions into one full transcript
+    full_transcript = ""
+    if transcription_history:
+        # Join all transcriptions with spaces
+        full_transcript = " ".join([item['text'] for item in transcription_history])
+    
     return jsonify({
         'transcription': latest_transcription,
+        'full_transcript': full_transcript,
         'history': transcription_history
     })
 

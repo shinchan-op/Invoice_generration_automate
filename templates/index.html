@@ -13,7 +13,11 @@
             </div>
             
             <button id="use-latest-btn" class="btn btn-primary" onclick="useLatestTranscription()" {% if not latest_transcription %}disabled{% endif %}>
-                Use Latest Transcription
+                Use All Transcriptions
+            </button>
+            
+            <button id="use-single-btn" class="btn btn-secondary" onclick="useSingleTranscription()" {% if not latest_transcription %}disabled{% endif %}>
+                Use Latest Only
             </button>
             
             <h4>Transcription History</h4>
@@ -59,6 +63,7 @@ function updateTranscription() {
             const latestDiv = document.getElementById('latest-transcription');
             const historyDiv = document.getElementById('transcription-history');
             const useLatestBtn = document.getElementById('use-latest-btn');
+            const useSingleBtn = document.getElementById('use-single-btn');
             
             // Update latest transcription
             if (data.transcription) {
@@ -66,8 +71,9 @@ function updateTranscription() {
                 latestDiv.classList.add('updated');
                 setTimeout(() => latestDiv.classList.remove('updated'), 1000);
                 
-                // Enable the use latest button
+                // Enable both buttons
                 useLatestBtn.disabled = false;
+                useSingleBtn.disabled = false;
             }
             
             // Update history
@@ -89,6 +95,28 @@ function updateTranscription() {
 
 // Function to use the latest transcription in the form
 function useLatestTranscription() {
+    fetch('/get_latest_transcription')
+        .then(response => response.json())
+        .then(data => {
+            if (data.full_transcript) {
+                document.getElementById('transcript-textarea').value = data.full_transcript;
+                // Scroll to the form
+                document.querySelector('.col-md-6:last-child').scrollIntoView({ 
+                    behavior: 'smooth' 
+                });
+            } else if (data.transcription) {
+                document.getElementById('transcript-textarea').value = data.transcription;
+                // Scroll to the form
+                document.querySelector('.col-md-6:last-child').scrollIntoView({ 
+                    behavior: 'smooth' 
+                });
+            }
+        })
+        .catch(error => console.error('Error fetching latest transcription:', error));
+}
+
+// Function to use only the latest single transcription
+function useSingleTranscription() {
     fetch('/get_latest_transcription')
         .then(response => response.json())
         .then(data => {
